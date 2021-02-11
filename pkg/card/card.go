@@ -5,50 +5,32 @@ import (
 )
 
 type Transaction struct {
-	Id int64
-	Sum int64
-	Date string
-	MCC string
-	Status string
+	UserId int64
+	Sum    int64
+	MCC    string
 }
 
-type Card struct {
-	Id int64
-	Owner string
-	Issuer string
-	Balance int64
-	Currency string
-	Number string
-	Transactions []Transaction
-}
-
-func AddTransaction(card *Card, transaction *Transaction) {
-	card.Balance -= transaction.Sum
-}
-
-func ExpensesByCategory(transactions []Transaction) map[string]int64 {
-	categories := make(map[string]int64)
+func SumByCategory(transactions []Transaction) map[string]int64 {
+	result := make(map[string]int64)
 
 	for _, transaction := range transactions {
 		getMMC := TranslateMCC(transaction.MCC)
-		categories[getMMC] += transaction.Sum
+		result[getMMC] += transaction.Sum
 	}
-
-	return categories
+	return result
 }
 
-func ExpensesByCategoryMutex(transactions []Transaction) map[string]int64 {
+func SumByCategoryMutex(transactions []Transaction, goroutines int) map[string]int64 {
 	wg := sync.WaitGroup{}
 	mu := sync.Mutex{}
 	result := make(map[string]int64)
-	const partsCount = 2
-	partSize := len(transactions) / partsCount
+	partSize := len(transactions) / goroutines
 
-	for i:=0; i<partsCount; i++ {
+	for i := 0; i < goroutines; i++ {
 		wg.Add(1)
-	    part := transactions[i*partSize:(i+1)* partSize]
+		part := transactions[i*partSize : (i+1)*partSize]
 		go func() {
-			m := ExpensesByCategory(part)
+			m := SumByCategory(part)
 
 			mu.Lock()
 			for k, v := range m {
@@ -62,3 +44,50 @@ func ExpensesByCategoryMutex(transactions []Transaction) map[string]int64 {
 	wg.Wait()
 	return result
 }
+
+func SumByCategoryChannels(transactions []Transaction, goroutines int) map[string]int64 {
+	result := make(map[string]int64)
+	ch := make(chan map[string]int64)
+	partSize := len(transactions) / goroutines
+
+	for i := 0; i < goroutines; i++ {
+		part := transactions[i*partSize : (i+1)*partSize]
+		go func(ch chan<- map[string]int64) {
+			ch <- SumByCategory(part)
+		}(ch)
+	}
+	finished := 0
+	for value := range ch {
+		for k, v := range value {
+			result[k] += v
+		}
+		finished++
+		if finished == goroutines {
+			break
+		}
+	}
+	return result
+}
+
+func SumByCategoryMutexWithoutFunc(transactions []Transaction, goroutines int) map[string]int64 {
+	wg := sync.WaitGroup{}
+	mu := sync.Mutex{}
+	result := make(map[string]int64)
+	partSize := len(transactions) / goroutines
+
+	for i := 0; i < goroutines; i++ {
+		wg.Add(1)
+		part := transactions[i*partSize : (i+1)*partSize]
+		go func() {
+			for _, t := range part {
+				mu.Lock()
+				result[TranslateMCC(t.MCC)] += t.Sum
+				mu.Unlock()
+			}
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+	return result
+}
+
