@@ -127,3 +127,59 @@ func TestSumByCategoryMutexWithoutFunc(t *testing.T) {
 		})
 	}
 }
+
+func BenchmarkSumByCategory(b *testing.B) {
+	transactions := MakeTransactions(1)
+	want := map[string]int64{"Eating Places and Restaurants": 1000000, "Grocery Stores, Supermarkets": 1000000}
+	b.ResetTimer() // сбрасываем таймер, т.к. сама генерация транзакций достаточно ресурсоёмка
+	for i := 0; i < b.N; i++ {
+		result := SumByCategory(transactions, 1)
+		b.StopTimer() // останавливаем таймер, чтобы время сравнения не учитывалось
+		if !reflect.DeepEqual(result, want) {
+			b.Fatalf("invalid result, got %v, want %v", result, want)
+		}
+		b.StartTimer() // продолжаем работу таймера
+	}
+}
+
+func BenchmarkSumByCategoryChannels(b *testing.B) {
+	transactions := MakeTransactions(1)
+	want := map[string]int64{"Eating Places and Restaurants": 1000000, "Grocery Stores, Supermarkets": 1000000}
+	b.ResetTimer() // сбрасываем таймер, т.к. сама генерация транзакций достаточно ресурсоёмка
+	for i := 0; i < b.N; i++ {
+		result := SumByCategoryChannels(transactions, 1, 10)
+		b.StopTimer() // останавливаем таймер, чтобы время сравнения не учитывалось
+		if !reflect.DeepEqual(result, want) {
+			b.Fatalf("invalid result, got %v, want %v", result, want)
+		}
+		b.StartTimer() // продолжаем работу таймера
+	}
+}
+
+func BenchmarkSumByCategoryMutex(b *testing.B) {
+	transactions := MakeTransactions(1)
+	want := map[string]int64{"Eating Places and Restaurants": 1000000, "Grocery Stores, Supermarkets": 1000000}
+	b.ResetTimer() // сбрасываем таймер, т.к. сама генерация транзакций достаточно ресурсоёмка
+	for i := 0; i < b.N; i++ {
+		result := SumByCategoryMutex(transactions, 1, 10)
+		b.StopTimer() // останавливаем таймер, чтобы время сравнения не учитывалось
+		if !reflect.DeepEqual(result, want) {
+			b.Fatalf("invalid result, got %v, want %v", result, want)
+		}
+		b.StartTimer() // продолжаем работу таймера
+	}
+}
+
+func BenchmarkSumByCategoryMutexWithoutFunc(b *testing.B) {
+	transactions := MakeTransactions(1)
+	want := map[string]int64{"Eating Places and Restaurants": 1000000, "Grocery Stores, Supermarkets": 1000000}
+	b.ResetTimer() // сбрасываем таймер, т.к. сама генерация транзакций достаточно ресурсоёмка
+	for i := 0; i < b.N; i++ {
+		result := SumByCategoryMutexWithoutFunc(transactions, 1, 10)
+		b.StopTimer() // останавливаем таймер, чтобы время сравнения не учитывалось
+		if !reflect.DeepEqual(result, want) {
+			b.Fatalf("invalid result, got %v, want %v", result, want)
+		}
+		b.StartTimer() // продолжаем работу таймера
+	}
+}

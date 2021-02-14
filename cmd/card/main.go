@@ -3,9 +3,26 @@ package main
 import (
 	"fmt"
 	"github.com/netwar1994/channels/pkg/card"
+	"log"
+	"os"
+	"runtime/trace"
 )
 
 func main() {
+	f, err := os.Create("trace.out")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		if err := f.Close(); err != nil {
+			log.Print(err)
+		}
+	}()
+	err = trace.Start(f)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer trace.Stop()
 
 	transactions := card.MakeTransactions(1)
 	fmt.Println("Функция без горутин")
